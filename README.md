@@ -71,6 +71,29 @@ Delete `backend/crm.db` and re-run `python -m app.seed`.
 
 ---
 
+## Recommended demo flow
+
+The fastest way to see everything — including the feature the whole
+assignment hinges on — in about two minutes:
+
+1. Log in as **Admin** (`admin@realestatecrm.io`).
+2. Create a Sales Employee from **Team**.
+3. Create a Project → a Building inside it → a few Units.
+4. Create a Lead and assign it to the new Sales Employee.
+5. Log out, log back in as that **Sales Employee**.
+6. Open the assigned Lead, confirm it (and only it / unclaimed leads) is
+   visible — see decision #3.
+7. Book an **Available** unit against the lead.
+8. Open a second browser tab/window logged in as the other Sales user and
+   try to book the *same* unit — confirm it's rejected with a clean
+   "already booked" message, not a crash (see decision #1).
+9. Cancel the booking from the first tab.
+10. Confirm the unit flips back to **Available** and the cancelled
+    booking still shows up in booking history (see decision #5).
+11. Check the **Dashboard** to see the numbers update accordingly.
+
+---
+
 ## Feature checklist against the brief
 
 - **Leads** — create, edit, search (name/phone/email), filter by stage,
@@ -87,6 +110,50 @@ Delete `backend/crm.db` and re-run `python -m app.seed`.
   permissions throughout (see decision #3).
 - **UI/UX** — responsive layout, search/filtering, loading skeletons,
   empty states, and error states with retry, on every list view.
+
+---
+
+## Screenshots
+
+> Add screenshots of the running app below before submitting — a
+> reviewer should be able to see the core flows without running the
+> project locally.
+
+### Login
+![Login](screenshots/login.png)
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### Lead management
+![Leads](screenshots/leads.png)
+
+### Property management
+![Properties](screenshots/properties.png)
+
+### Booking (including the double-booking rejection)
+![Booking](screenshots/booking.png)
+
+---
+
+## Validation & error handling
+
+- Pydantic models validate every request payload before it reaches
+  business logic; malformed input returns a `422` with field-level
+  detail rather than failing deeper in the stack.
+- Every route except `/auth/login` and the bootstrap `/auth/register`
+  requires a valid `Bearer` JWT; missing/expired/invalid tokens return a
+  `401`.
+- Role checks (Admin vs Sales) are enforced server-side on every
+  endpoint that needs them — not just hidden in the UI — so a Sales
+  user can't call an admin-only endpoint directly and get a `403`.
+- Double-booking is rejected at both the application check and the
+  database's partial unique index (see decision #1); a race that slips
+  past the first check still fails cleanly with a descriptive `409`
+  instead of a `500`.
+- Every list view in the frontend has a loading skeleton, an empty
+  state, and an error state with a retry action, so a slow network or a
+  failed request never looks like the page silently broke.
 
 ---
 
@@ -136,6 +203,35 @@ a timestamp, and the unit flips back to `Available`. This means the
 booking table is a complete, honest history of everything that happened
 to a unit, not just its current state, which is exactly the kind of audit
 trail a sales manager would expect to be able to pull later.
+
+---
+
+## Project structure
+
+```
+backend/
+├── app/
+│   ├── main.py            # FastAPI app, static frontend mount, router registration
+│   ├── database.py        # SQLAlchemy engine/session setup
+│   ├── models/             # SQLAlchemy ORM models (users, leads, projects, etc.)
+│   ├── schemas/             # Pydantic request/response models
+│   ├── routers/             # auth, leads, properties, bookings, dashboard
+│   ├── auth/                 # JWT + password hashing helpers, role dependencies
+│   └── seed.py             # Demo data script
+├── requirements.txt
+└── crm.db                  # SQLite database (generated, not committed)
+
+frontend/
+├── index.html
+├── css/
+├── js/
+│   ├── api.js               # Thin fetch wrapper / data layer
+│   └── app.js               # Hash-router + per-view render functions
+└── assets/
+```
+
+> Adjust this tree to match the actual folders in the repo before
+> submitting — don't leave files listed here that don't exist.
 
 ---
 
